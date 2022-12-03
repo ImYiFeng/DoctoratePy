@@ -1,17 +1,25 @@
 from datetime import datetime
 
 from flask import Flask
+from utils import read_json
+from constants import CONFIG_PATH
 
-import account, background, building, campaignV2, char, charBuild, charm, crisis, \
-        deepsea, online, quest, pay, rlv2, shop, story, user
+import account, background, building, campaignV2, char, charBuild, charm, \
+        crisis, deepsea, mail, online, quest, pay, rlv2, shop, story, user, \
+        asset.assetbundle, config.prod
+
+server_config = read_json(CONFIG_PATH)
 
 app = Flask(__name__)
-port = 8443
+host = server_config["server"]["host"]
+port = server_config["server"]["port"]
 
 
 app.add_url_rule('/account/login', methods=['POST'], view_func=account.accountLogin)
 app.add_url_rule('/account/syncData', methods=['POST'], view_func=account.accountSyncData)
 app.add_url_rule('/account/syncStatus', methods=['POST'], view_func=account.accountSyncStatus)
+
+app.add_url_rule('/assetbundle/official/Android/assets/<string:assetsHash>/<string:fileName>', methods=['GET'], view_func=asset.assetbundle.getFile)
 
 app.add_url_rule('/background/setBackground', methods=['POST'], view_func=background.backgroundSetBackground)
 
@@ -19,6 +27,7 @@ app.add_url_rule('/building/sync', methods=['POST'], view_func=building.building
 
 app.add_url_rule('/campaignV2/battleStart', methods=['POST'], view_func=campaignV2.campaignV2BattleStart)
 app.add_url_rule('/campaignV2/battleFinish', methods=['POST'], view_func=campaignV2.campaignV2BattleFinish)
+app.add_url_rule('/campaignV2/battleSweep', methods=['POST'], view_func=campaignV2.campaignV2BattleSweep)
 
 app.add_url_rule('/char/changeMarkStar', methods=['POST'], view_func=char.charChangeMarkStar)
 
@@ -34,11 +43,25 @@ app.add_url_rule('/charBuild/changeCharTemplate', methods=['POST'], view_func=ch
 
 app.add_url_rule('/charm/setSquad', methods=['POST'], view_func=charm.charmSetSquad)
 
+app.add_url_rule('/config/prod/announce_meta/Android/preannouncement.meta.json', methods=['GET'], view_func=config.prod.prodPreAnnouncement)
+app.add_url_rule('/config/prod/announce_meta/Android/announcement.meta.json', methods=['GET'], view_func=config.prod.prodAnnouncement)
+app.add_url_rule('/config/prod/official/Android/version', methods=['GET'], view_func=config.prod.prodAndroidVersion)
+app.add_url_rule('/config/prod/official/network_config', methods=['GET'], view_func=config.prod.prodNetworkConfig)
+app.add_url_rule('/config/prod/official/refresh_config', methods=['GET'], view_func=config.prod.prodRefreshConfig)
+app.add_url_rule('/config/prod/official/remote_config', methods=['GET'], view_func=config.prod.prodRemoteConfig)
+
 app.add_url_rule('/crisis/getInfo', methods=['POST'], view_func=crisis.crisisGetCrisisInfo)
 app.add_url_rule('/crisis/battleStart', methods=['POST'], view_func=crisis.crisisBattleStart)
 app.add_url_rule('/crisis/battleFinish', methods=['POST'], view_func=crisis.crisisBattleFinish)
 
 app.add_url_rule('/deepSea/branch', methods=['POST'], view_func=deepsea.deepSeaBranch)
+app.add_url_rule('/deepSea/event', methods=['POST'], view_func=deepsea.deepSeaEvent)
+
+app.add_url_rule('/mail/getMetaInfoList', methods=['POST'], view_func=mail.mailGetMetaInfoList)
+app.add_url_rule('/mail/listMailBox', methods=['POST'], view_func=mail.mailListMailBox)
+app.add_url_rule('/mail/receiveMail', methods=['POST'], view_func=mail.mailReceiveMail)
+app.add_url_rule('/mail/receiveAllMail', methods=['POST'], view_func=mail.mailReceiveAllMail)
+app.add_url_rule('/mail/removeAllReceivedMail', methods=['POST'], view_func=mail.mailRemoveAllReceivedMail)
 
 app.add_url_rule('/online/v1/ping', methods=['POST'], view_func=online.onlineV1Ping)
 app.add_url_rule('/online/v1/loginout', methods=['POST'], view_func=online.onlineV1LoginOut)
@@ -83,5 +106,5 @@ def writeLog(data):
     print(f'[{datetime.utcnow()}] {data}')
 
 if __name__ == "__main__":
-    writeLog('[SERVER] Server started at port ' + str(port))
-    app.run(port=port, debug=True)
+    writeLog('[SERVER] Server started at http://' + host + ":" + str(port))
+    app.run(host=host, port=port, debug=True)

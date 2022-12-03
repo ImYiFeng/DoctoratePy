@@ -4,15 +4,14 @@ from time import time
 from copy import deepcopy
 from base64 import b64encode
 from hashlib import md5
-
-import requests
 from flask import request
 
 from constants import USER_JSON_PATH, CONFIG_PATH, BATTLE_REPLAY_JSON_PATH, \
                     SKIN_TABLE_URL, CHARACTER_TABLE_URL, EQUIP_TABLE_URL, STORY_TABLE_URL, STAGE_TABLE_URL, \
                     SYNC_DATA_TEMPLATE_PATH, BATTLEEQUIP_TABLE_URL, DM_TABLE_URL, RETRO_TABLE_URL, \
-                    HANDBOOK_INFO_TABLE_URL
+                    HANDBOOK_INFO_TABLE_URL, MAILLIST_PATH, CHARM_TABLE_URL, ACTIVITY_TABLE_URL
 from utils import read_json, write_json
+from core.function.update import updateData
 
 def accountLogin():
 
@@ -35,16 +34,19 @@ def accountSyncData():
         write_json({}, USER_JSON_PATH)
 
     saved_data = read_json(USER_JSON_PATH)
+    mail_data = read_json(MAILLIST_PATH, encoding="utf-8")
     player_data = read_json(SYNC_DATA_TEMPLATE_PATH, encoding="utf-8")
     config = read_json(CONFIG_PATH)
 
     # Load newest data
-    data_skin = requests.get(SKIN_TABLE_URL).json()
-    character_table = requests.get(CHARACTER_TABLE_URL).json()
-    equip_table = requests.get(EQUIP_TABLE_URL).json()
-    battle_equip_table = requests.get(BATTLEEQUIP_TABLE_URL).json()
-    display_meta_table = requests.get(DM_TABLE_URL).json()
-    retro_table = requests.get(RETRO_TABLE_URL).json()
+    data_skin = updateData(SKIN_TABLE_URL)
+    character_table = updateData(CHARACTER_TABLE_URL)
+    equip_table = updateData(EQUIP_TABLE_URL)
+    battle_equip_table = updateData(BATTLEEQUIP_TABLE_URL)
+    display_meta_table = updateData(DM_TABLE_URL)
+    retro_table = updateData(RETRO_TABLE_URL)
+    charm_table = updateData(CHARM_TABLE_URL)
+    activity_table = updateData(ACTIVITY_TABLE_URL)
 
     ts = round(time())
     cnt = 0
@@ -260,7 +262,7 @@ def accountSyncData():
 
     # Tamper story
     myStoryList = {"init": 1}
-    story_table = requests.get(STORY_TABLE_URL).json()
+    story_table = updateData(STORY_TABLE_URL)
     for story in story_table:
         myStoryList.update({story:1})
 
@@ -268,7 +270,7 @@ def accountSyncData():
 
     # Tamper Stages
     myStageList = {}
-    stage_table = requests.get(STAGE_TABLE_URL).json()
+    stage_table = updateData(STAGE_TABLE_URL)
     for stage in stage_table["stages"]:
         myStageList.update({
             stage: {
@@ -286,7 +288,7 @@ def accountSyncData():
 
     # Tamper addon [paradox&records]
     addonList = {}
-    addon_table = requests.get(HANDBOOK_INFO_TABLE_URL).json()
+    addon_table = updateData(HANDBOOK_INFO_TABLE_URL)
     for charId in addon_table["handbookDict"]:
         addonList[charId] = {"story":{}}
         story = addon_table["handbookDict"][charId]["handbookAvgList"]
@@ -371,6 +373,67 @@ def accountSyncData():
             }
         })
     player_data["user"]["background"]["bgs"] = bgs
+
+    # Update charms
+    for charm in charm_table["charmList"]:
+        player_data["user"]["charm"]["charms"].update({charm["id"]: 1})
+
+    # Update battle bus
+    for car_gear in activity_table["carData"]["carDict"]:
+        player_data["user"]["car"]["accessories"].update({
+            car_gear: {
+                "id": car_gear,
+                "num": len(activity_table["carData"]["carDict"][car_gear]["posList"])
+            }
+        })
+
+    # Update Stultifera Navis
+    activity_data = activity_table["activity"]["TYPE_ACT17SIDE"]["act17side"]
+    for place in activity_data["placeDataMap"]:
+        player_data["user"]["deepSea"]["places"].update({place: 2})
+
+    for node in activity_data["nodeInfoDataMap"]:
+        player_data["user"]["deepSea"]["nodes"].update({node: 2})
+
+    for choice_node in activity_data["choiceNodeDataMap"]:
+        player_data["user"]["deepSea"]["choices"].update({
+            choice_node: [2 for _ in activity_data["choiceNodeDataMap"][choice_node]["optionList"]]
+        })
+
+    for event in activity_data["eventDataMap"]:
+        player_data["user"]["deepSea"]["events"].update({event: 1})
+
+    for treasure in activity_data["treasureNodeDataMap"]:
+        player_data["user"]["deepSea"]["treasures"].update({treasure: 1})
+
+    for story in activity_data["storyNodeDataMap"]:
+        player_data["user"]["deepSea"]["stories"].update({
+            activity_data["storyNodeDataMap"][story]["storyKey"]: 1
+        })
+
+    for tech in activity_data["techTreeDataMap"]:
+        player_data["user"]["deepSea"]["techTrees"].update({
+            tech: {
+                "state": 2,
+                "branch": activity_data["techTreeDataMap"][tech]["defaultBranchId"]
+            }
+        })
+
+    for log in activity_data["archiveItemUnlockDataMap"]:
+        if not log.startswith("act17side_log_"):
+            continue
+
+        chapter = activity_data["archiveItemUnlockDataMap"][log]["chapterId"]
+        if chapter in player_data["user"]["deepSea"]["logs"].keys():
+            player_data["user"]["deepSea"]["logs"][chapter].append(log)
+        else:
+            player_data["user"]["deepSea"]["logs"].update({chapter:[log]})
+
+    # Check if mail exists
+    for mailId in mail_data["mailList"]:
+        if int(mailId) not in mail_data["recievedIDs"] and int(mailId) not in mail_data["deletedIDs"]:
+            player_data["user"]["pushFlags"]["hasGifts"] = 1
+            break
 
     # Update timestamps
     player_data["user"]["status"]["lastRefreshTs"] = ts

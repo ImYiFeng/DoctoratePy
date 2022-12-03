@@ -1,6 +1,8 @@
 BASE_URL = "https://raw.githubusercontent.com/Kengxxiao/ArknightsGameData/master/zh_CN/gamedata"
 
 # TABLE Urls
+ACTIVITY_TABLE_URL = BASE_URL + "/excel/activity_table.json"
+CHARM_TABLE_URL = BASE_URL + "/excel/charm_table.json"
 SKIN_TABLE_URL = BASE_URL + "/excel/skin_table.json"
 CHARACTER_TABLE_URL = BASE_URL + "/excel/character_table.json"
 BATTLEEQUIP_TABLE_URL = BASE_URL + "/excel/battle_equip_table.json"
@@ -14,6 +16,7 @@ HANDBOOK_INFO_TABLE_URL = BASE_URL + "/excel/handbook_info_table.json"
 
 # Config Data
 CONFIG_PATH = "config\\config.json"
+MAILLIST_PATH = "config\\mails.json"
 RLV2_CONFIG_PATH = "config\\rlv2Config.json"
 SYNC_DATA_TEMPLATE_PATH = "syncData.json"
 
